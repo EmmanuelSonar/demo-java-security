@@ -19,18 +19,26 @@ public class HomeServlet extends HttpServlet {
 
 
     protected void doGet(HttpServletRequest request,
-                         HttpServletResponse response) throws ServletException, IOException {
-        String name = request.getParameter("name").trim();
-        response.setContentType("text/html");
-        PrintWriter out = response.getWriter();
-        out.print("<h2>Hello "+name+ "</h2>");
-        out.close();
+                         HttpServletResponse response) {
+        try {
+            String name = request.getParameter("name").trim();
+            response.setContentType("text/html");
+            PrintWriter out = response.getWriter();
+            out.print("<h2>Hello "+name+ "</h2>");
+            out.close();
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
     }
 
     protected void doPost(HttpServletRequest request,
                           HttpServletResponse response) throws ServletException, IOException {
         // TODO Auto-generated method stub
-        doGet(request, response);
+        try {
+            doGet(request, response);
+        } catch (Exception e) {
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An internal error occurred");
+        }
     }
 
 }

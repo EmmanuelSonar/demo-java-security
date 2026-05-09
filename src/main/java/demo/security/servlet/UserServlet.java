@@ -28,7 +28,7 @@ public class UserServlet extends HttpServlet {
             });
             out.close();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An internal error occurred.");
         }
 
     }
@@ -62,7 +62,7 @@ public class UserServlet extends HttpServlet {
             });
             out.close();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An internal error occurred");
         }
     }
 }
