@@ -14,6 +14,10 @@ public class FileServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String data = request.getParameter("data");
-        Utils.deleteFile(data);
+        try {
+            Utils.deleteFile(data);
+        } catch (IOException e) {
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An error occurred while processing the request.");
+        }
     }
 }
