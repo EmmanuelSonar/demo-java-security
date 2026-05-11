@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: java-security-postgres
+    environment:
+      POSTGRES_DB: java_security
+      POSTGRES_USER: java_user
+      POSTGRES_PASSWORD: changeme123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U java_user -d java_security"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - java-security-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: java-security-app
+    environment:
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+      CATALINA_OPTS: "-Djava.awt.headless=true"
+      TZ: UTC
+    ports:
+      - "8080:8080"
+      - "8686:8686"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/usr/local/tomcat/logs
+      - ./credentials.properties:/app/credentials.properties:ro
+    networks:
+      - java-security-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: java-security-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - java-security-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: java-security-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+    networks:
+      - java-security-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: java-security-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - java-security-network
+
+volumes:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  java-security-network:
+    driver: bridge

@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: java-security-pdb
+  namespace: java-security
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: java-security
