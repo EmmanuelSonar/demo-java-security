@@ -1,0 +1,34 @@
+package demo.security.logging;
+
+public enum ActivityEventType {
+
+    // Source events - data entering the application
+    HTTP_REQUEST_RECEIVED,
+    USER_INPUT_PARAMETER,
+    USER_INPUT_HEADER,
+    USER_INPUT_COOKIE,
+    SESSION_DATA_ACCESSED,
+    REQUEST_BODY_READ,
+
+    // Sink events - data leaving or affecting system state
+    SQL_QUERY_EXECUTED,
+    FILE_READ,
+    FILE_WRITE,
+    FILE_DELETE,
+    SCRIPT_EXECUTED,
+    DESERIALIZATION_PERFORMED,
+    NETWORK_CONNECTION_OPENED,
+    HTTP_RESPONSE_WRITTEN,
+
+    // Processing events
+    DATA_SANITIZED,
+    DATA_VALIDATED,
+    AUTHENTICATION_ATTEMPTED,
+    AUTHENTICATION_SUCCEEDED,
+    AUTHENTICATION_FAILED,
+    AUTHORIZATION_CHECKED,
+    ENCRYPTION_PERFORMED,
+    DECRYPTION_PERFORMED,
+    KEY_GENERATED,
+    SERIALIZATION_PERFORMED
+}
