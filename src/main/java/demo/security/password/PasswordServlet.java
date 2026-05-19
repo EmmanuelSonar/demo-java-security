@@ -32,7 +32,11 @@ public class PasswordServlet extends HttpServlet {
             generated = generator.generate(length);
             writeGenerateResponse(response, generated);
         } catch (Exception e) {
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An error occurred while generating the password");
+            try {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An error occurred while generating the password");
+            } catch (IOException ioe) {
+                // Unable to send error response; nothing more can be done
+            }
         } finally {
             scrub(generated);
         }
