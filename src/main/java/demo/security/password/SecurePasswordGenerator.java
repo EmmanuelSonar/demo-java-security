@@ -77,7 +77,7 @@ public final class SecurePasswordGenerator {
         if (policy.isRequireLowercase()) sb.append(LOWERCASE);
         if (policy.isRequireDigit()) sb.append(DIGITS);
         if (policy.isRequireSymbol()) sb.append(SYMBOLS);
-        if (sb.length() == 0) {
+        if (sb.isEmpty()) {
             sb.append(UPPERCASE).append(LOWERCASE).append(DIGITS);
         }
         return sb.toString();

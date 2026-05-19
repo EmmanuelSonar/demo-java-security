@@ -31,25 +31,38 @@ public class PasswordServlet extends HttpServlet {
         try {
             generated = generator.generate(length);
             writeGenerateResponse(response, generated);
+        } catch (Exception e) {
+            try {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An error occurred while generating the password");
+            } catch (IOException ioe) {
+                // Unable to send error response; nothing more can be done
+            }
         } finally {
             scrub(generated);
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        String submitted = request.getParameter("password");
-        if (submitted == null) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing password parameter");
-            return;
-        }
-        char[] chars = submitted.toCharArray();
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) {
         try {
-            PasswordStrengthAnalyzer.Result result = analyzer.analyze(chars);
-            writeAnalyzeResponse(response, result);
-        } finally {
-            scrub(chars);
+            String submitted = request.getParameter("password");
+            if (submitted == null) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing password parameter");
+                return;
+            }
+            char[] chars = submitted.toCharArray();
+            try {
+                PasswordStrengthAnalyzer.Result result = analyzer.analyze(chars);
+                writeAnalyzeResponse(response, result);
+            } finally {
+                scrub(chars);
+            }
+        } catch (Exception e) {
+            try {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An internal error occurred");
+            } catch (IOException ioe) {
+                // Unable to send error response; nothing more can be done
+            }
         }
     }
 
