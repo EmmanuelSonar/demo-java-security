@@ -7,6 +7,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.owasp.encoder.Encode;
 
 @WebServlet("/helloWorld")
 public class HomeServlet extends HttpServlet {
@@ -23,7 +24,7 @@ public class HomeServlet extends HttpServlet {
         String name = request.getParameter("name").trim();
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
-        out.print("<h2>Hello "+name+ "</h2>");
+        out.print("<h2>Hello "+Encode.forHtml(name)+ "</h2>");
         out.close();
     }
 
