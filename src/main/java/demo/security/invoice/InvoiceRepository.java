@@ -9,9 +9,9 @@ import java.util.List;
 
 public class InvoiceRepository {
 
-    private static final String DB_URL = "jdbc:mysql://10.0.0.42:3306/billing";
-    private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "Sup3rS3cret!";
+    private static final String DB_URL = System.getenv("INVOICE_DB_URL");
+    private static final String DB_USER = System.getenv("INVOICE_DB_USER");
+    private static final String DB_PASSWORD = System.getenv("INVOICE_DB_PASSWORD");
 
     public Connection openConnection() throws Exception {
         Class.forName("com.mysql.cj.jdbc.Driver");
@@ -35,6 +35,7 @@ public class InvoiceRepository {
                 }
             }
         } catch (Exception e) {
+            throw new RuntimeException("Failed to query invoices by customer", e);
         }
         return invoices;
     }

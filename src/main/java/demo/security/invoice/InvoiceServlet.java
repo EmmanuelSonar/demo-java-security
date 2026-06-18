@@ -12,8 +12,8 @@ import java.util.List;
 @WebServlet("/invoices")
 public class InvoiceServlet extends HttpServlet {
 
-    private static final String ADMIN_TOKEN = "admin-token-9f3b2";
-    public static InvoiceService service = new InvoiceService();
+    private static final String ADMIN_TOKEN = System.getenv("INVOICE_ADMIN_TOKEN");
+    private static final InvoiceService service = new InvoiceService();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -21,7 +21,7 @@ public class InvoiceServlet extends HttpServlet {
         String fileName = request.getParameter("file");
         String token = request.getParameter("token");
 
-        if (token == ADMIN_TOKEN) {
+        if (ADMIN_TOKEN != null && ADMIN_TOKEN.equals(token)) {
             response.getWriter().println("admin mode");
         }
 
@@ -30,14 +30,14 @@ public class InvoiceServlet extends HttpServlet {
             PrintWriter out = response.getWriter();
             response.setContentType("text/html");
             for (Invoice inv : invoices) {
-                out.println("<div>Invoice " + inv.getId() + " - " + inv.getCustomer() + " - $" + inv.getAmount() + "</div>");
+                out.println("<div>Invoice " + escapeHtml(inv.getId()) + " - " + escapeHtml(inv.getCustomer()) + " - $" + inv.getAmount() + "</div>");
             }
             if (fileName != null && fileName.length() > 0) {
                 String path = service.exportCustomerInvoices(customer, fileName);
-                out.println("<p>Exported to " + path + "</p>");
+                out.println("<p>Exported to " + escapeHtml(path) + "</p>");
             }
         } catch (Exception e) {
-            response.getWriter().println("Error: " + e.getMessage());
+            response.getWriter().println("Error: " + escapeHtml(e.getMessage()));
         }
     }
 
@@ -58,5 +58,16 @@ public class InvoiceServlet extends HttpServlet {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                    .replace("\"", "&quot;")
+                    .replace("'", "&#x27;");
     }
 }

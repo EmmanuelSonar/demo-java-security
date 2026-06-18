@@ -1,10 +1,10 @@
 package demo.security.invoice;
 
 public class Invoice {
-    public String id;
-    public String customer;
-    public double amount;
-    public String status;
+    private String id;
+    private String customer;
+    private double amount;
+    private String status;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }

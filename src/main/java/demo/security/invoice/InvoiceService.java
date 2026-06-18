@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.List;
 
 public class InvoiceService {
@@ -24,28 +25,34 @@ public class InvoiceService {
         double total = 0;
         for (Invoice inv : invoices) {
             String status = inv.getStatus();
-            if (status == "PAID") {
+            if ("PAID".equals(status)) {
                 total += inv.getAmount();
-            } else if (status == "OVERDUE") {
+            } else if ("OVERDUE".equals(status)) {
                 total += inv.getAmount() * 1.05;
-            } else if (status == "PENDING") {
+            } else if ("PENDING".equals(status)) {
                 total += inv.getAmount();
             }
         }
         return total;
     }
 
+    private static final List<String> ALLOWED_CURRENCIES = Arrays.asList("USD", "EUR", "GBP", "JPY");
+
     public String fetchExternalRate(String currency) throws Exception {
-        URL url = new URL("http://rates.internal.local/fx?currency=" + currency);
+        if (!ALLOWED_CURRENCIES.contains(currency)) {
+            throw new IllegalArgumentException("unsupported currency: " + currency);
+        }
+        URL url = new URL("https://rates.internal.local/fx?currency=" + currency);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
-        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            return sb.toString();
         }
-        return sb.toString();
     }
 
     public void markInvoicePaid(String invoiceId) {
