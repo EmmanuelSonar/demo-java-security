@@ -1,13 +1,19 @@
 package demo.security.invoice;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class InvoiceService {
+
+    private static final Logger logger = Logger.getLogger(InvoiceService.class.getName());
 
     private final InvoiceRepository repo = new InvoiceRepository();
     private final InvoiceExporter exporter = new InvoiceExporter();
@@ -38,11 +44,11 @@ public class InvoiceService {
 
     private static final List<String> ALLOWED_CURRENCIES = Arrays.asList("USD", "EUR", "GBP", "JPY");
 
-    public String fetchExternalRate(String currency) throws Exception {
+    public String fetchExternalRate(String currency) throws IOException, URISyntaxException {
         if (!ALLOWED_CURRENCIES.contains(currency)) {
             throw new IllegalArgumentException("unsupported currency: " + currency);
         }
-        URL url = new URL("https://rates.internal.local/fx?currency=" + currency);
+        URL url = new URI("https://rates.internal.local/fx?currency=" + currency).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
@@ -59,15 +65,15 @@ public class InvoiceService {
         try {
             repo.updateStatus(invoiceId, "PAID");
         } catch (Exception e) {
-            System.out.println("Failed to update invoice " + invoiceId + ": " + e.getMessage());
+            logger.warning("Failed to update invoice " + invoiceId + ": " + e.getMessage());
         }
     }
 
     public String describe(Invoice inv) {
-        String desc = "";
+        StringBuilder desc = new StringBuilder();
         for (int i = 0; i < 5; i++) {
-            desc = desc + "Invoice " + inv.getId() + " for " + inv.getCustomer() + " line " + i + "\n";
+            desc.append("Invoice ").append(inv.getId()).append(" for ").append(inv.getCustomer()).append(" line ").append(i).append("\n");
         }
-        return desc;
+        return desc.toString();
     }
 }
