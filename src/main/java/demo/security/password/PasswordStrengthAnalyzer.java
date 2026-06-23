@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public final class PasswordStrengthAnalyzer {
@@ -29,8 +30,21 @@ public final class PasswordStrengthAnalyzer {
     }
 
     public Result analyze(char[] password) {
+        return analyze(password, Collections.<String>emptySet());
+    }
+
+    /**
+     * Analyzes a password, additionally rejecting it if it contains any
+     * context-specific term (e.g. the user's username or email local-part).
+     * Terms shorter than the policy's minimum context-term length are ignored
+     * to avoid spurious matches on very short fragments.
+     */
+    public Result analyze(char[] password, Set<String> contextTerms) {
         if (password == null) {
             throw new IllegalArgumentException("password must not be null");
+        }
+        if (contextTerms == null) {
+            throw new IllegalArgumentException("contextTerms must not be null");
         }
 
         List<String> violations = new ArrayList<>();
@@ -62,6 +76,9 @@ public final class PasswordStrengthAnalyzer {
         }
         if (containsCommonPassword(password)) {
             violations.add("Matches a commonly used password");
+        }
+        if (containsContextTerm(password, contextTerms)) {
+            violations.add("Contains personal or account information");
         }
         if (containsSequential(password)) {
             violations.add("Contains a sequential run (e.g. abcd, 1234)");
@@ -141,9 +158,27 @@ public final class PasswordStrengthAnalyzer {
     }
 
     private boolean containsCommonPassword(char[] password) {
-        String lower = new String(password).toLowerCase();
+        String lower = new String(password).toLowerCase(Locale.ROOT);
         for (String common : COMMON_PASSWORDS) {
-            if (lower.equals(common)) {
+            if (policy.isDisallowCommonSubstrings() ? lower.contains(common) : lower.equals(common)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsContextTerm(char[] password, Set<String> contextTerms) {
+        if (contextTerms.isEmpty()) {
+            return false;
+        }
+        String lower = new String(password).toLowerCase(Locale.ROOT);
+        for (String term : contextTerms) {
+            if (term == null) {
+                continue;
+            }
+            String normalized = term.toLowerCase(Locale.ROOT).trim();
+            if (normalized.length() >= policy.getMinContextTermLength()
+                    && lower.contains(normalized)) {
                 return true;
             }
         }

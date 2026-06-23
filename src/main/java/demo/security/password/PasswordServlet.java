@@ -2,7 +2,9 @@ package demo.security.password;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -52,7 +54,8 @@ public class PasswordServlet extends HttpServlet {
             }
             char[] chars = submitted.toCharArray();
             try {
-                PasswordStrengthAnalyzer.Result result = analyzer.analyze(chars);
+                Set<String> contextTerms = collectContextTerms(request);
+                PasswordStrengthAnalyzer.Result result = analyzer.analyze(chars, contextTerms);
                 writeAnalyzeResponse(response, result);
             } finally {
                 scrub(chars);
@@ -63,6 +66,33 @@ public class PasswordServlet extends HttpServlet {
             } catch (IOException ioe) {
                 // Unable to send error response; nothing more can be done
             }
+        }
+    }
+
+    /**
+     * Gathers context-specific terms a password should not contain: the
+     * authenticated user, and any submitted username/email. For emails the
+     * local-part (before '@') is added so that "alice@corp.com" also blocks
+     * passwords containing "alice".
+     */
+    private Set<String> collectContextTerms(HttpServletRequest request) {
+        Set<String> terms = new LinkedHashSet<>();
+        addContextTerm(terms, request.getRemoteUser());
+        addContextTerm(terms, request.getParameter("username"));
+        String email = request.getParameter("email");
+        addContextTerm(terms, email);
+        if (email != null) {
+            int at = email.indexOf('@');
+            if (at > 0) {
+                addContextTerm(terms, email.substring(0, at));
+            }
+        }
+        return terms;
+    }
+
+    private void addContextTerm(Set<String> terms, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            terms.add(value.trim());
         }
     }
 
