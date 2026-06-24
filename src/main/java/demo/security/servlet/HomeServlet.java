@@ -21,6 +21,11 @@ public class HomeServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request,
                          HttpServletResponse response) throws ServletException, IOException {
         String name = request.getParameter("name").trim();
+        name = name.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#x27;");
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         out.print("<h2>Hello "+name+ "</h2>");
