@@ -23,10 +23,12 @@ public class Insecure {
     String obj = request.getParameter("data");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enableDefaultTyping();
-    String val = mapper.readValue(obj, String.class);
+    mapper.readValue(obj, String.class);
     File tempDir;
     tempDir = File.createTempFile("", ".");
-    tempDir.delete();
+    if (!tempDir.delete()) {
+      throw new IOException("Failed to delete temp file");
+    }
     tempDir.mkdir();
     Files.exists(Paths.get("/tmp/", obj));
   }
@@ -40,11 +42,11 @@ public class Insecure {
   }
   
   public String hotspotSQL(Connection connection, String user) throws Exception {
-	  Statement statement = null;
-	  statement = connection.createStatement();
-	  ResultSet rs = statement.executeQuery("select userid from users WHERE username=" + user);
-	  return rs.getString(0);
-	}
+    Statement statement = null;
+    statement = connection.createStatement();
+    ResultSet rs = statement.executeQuery("select userid from users WHERE username=" + user);
+    return rs.getString(0);
+  }
 
   // --------------------------------------------------------------------------
   // Custom sources, sanitizer and sinks example

@@ -11,13 +11,14 @@ public class WebUtils {
 
     public void addCookie(HttpServletResponse response, String name, String value) {
         Cookie c = new Cookie(name, value);
+        c.setSecure(true);
         response.addCookie(c);
     }
 
     public static void getSessionId(HttpServletRequest request){
         String sessionId = request.getRequestedSessionId();
         if (sessionId != null){
-            String ip = "10.40.1.1";
+            String ip = System.getProperty("session.forward.ip", "127.0.0.1");
             Socket socket = null;
             try {
                 socket = new Socket(ip, 6667);
