@@ -1,5 +1,6 @@
 package demo.security.servlet;
 
+import demo.security.logging.SecurityAuditLogger;
 import demo.security.util.DBUtils;
 import demo.security.util.SessionHeader;
 import org.apache.commons.codec.binary.Base64;
@@ -15,9 +16,16 @@ import java.util.List;
 
 @WebServlet("/users")
 public class UserServlet extends HttpServlet {
+
+    private final SecurityAuditLogger auditLogger = SecurityAuditLogger.getInstance();
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String user = request.getParameter("username");
+        String clientIp = request.getRemoteAddr();
+
+        auditLogger.logUserInputParameter("UserServlet", "username", user, clientIp);
+
         try {
             DBUtils db = new DBUtils();
             List<String> users = db.findUsers(user);
@@ -30,14 +38,17 @@ public class UserServlet extends HttpServlet {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
 
     private SessionHeader getSessionHeader(HttpServletRequest request) {
         String sessionAuth = request.getHeader("Session-Auth");
+        String clientIp = request.getRemoteAddr();
+
         if (sessionAuth != null) {
+            auditLogger.logHeaderExtracted("UserServlet", "Session-Auth", sessionAuth, clientIp);
             try {
                 byte[] decoded = Base64.decodeBase64(sessionAuth);
+                auditLogger.logDeserialization("UserServlet", "Session-Auth header", clientIp);
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(decoded));
                 return (SessionHeader) in.readObject();
             } catch (Exception e) {
@@ -52,6 +63,10 @@ public class UserServlet extends HttpServlet {
         SessionHeader sessionHeader = getSessionHeader(request);
         if (sessionHeader == null) return;
         String user = sessionHeader.getUsername();
+        String clientIp = request.getRemoteAddr();
+
+        auditLogger.logUserInputParameter("UserServlet", "sessionHeader.username", user, clientIp);
+
         try {
             DBUtils db = new DBUtils();
             List<String> users = db.findUsers(user);
