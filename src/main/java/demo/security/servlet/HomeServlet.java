@@ -20,11 +20,22 @@ public class HomeServlet extends HttpServlet {
 
     protected void doGet(HttpServletRequest request,
                          HttpServletResponse response) throws ServletException, IOException {
-        String name = request.getParameter("name").trim();
+        String name = encodeHtml(request.getParameter("name").trim());
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         out.print("<h2>Hello "+name+ "</h2>");
         out.close();
+    }
+
+    private static String encodeHtml(String input) {
+        if (input == null) {
+            return null;
+        }
+        return input.replace("&", "&amp;")
+                     .replace("<", "&lt;")
+                     .replace(">", "&gt;")
+                     .replace("\"", "&quot;")
+                     .replace("'", "&#x27;");
     }
 
     protected void doPost(HttpServletRequest request,
