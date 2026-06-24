@@ -1,0 +1,273 @@
+name: Build and Deploy to Kubernetes
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/java-security
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.meta.outputs.tags }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: java_security
+          POSTGRES_USER: java_user
+          POSTGRES_PASSWORD: changeme123
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run tests
+        run: mvn clean verify
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/java_security
+          DB_USERNAME: java_user
+          DB_PASSWORD: changeme123
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./target/site/jacoco/jacoco.xml
+          fail_ci_if_error: false
+
+  deploy-dev:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: development
+      url: https://java-security-dev.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.27.0'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name java-security-dev \
+            --region us-east-1
+
+      - name: Deploy with Helm
+        run: |
+          helm repo add myrepo ${{ secrets.HELM_REPO_URL }} || true
+          helm repo update
+
+          helm upgrade --install java-security ./helm \
+            --namespace java-security \
+            --create-namespace \
+            --values helm/values.yaml \
+            --set image.registry=${{ env.REGISTRY }} \
+            --set image.repository=${{ env.IMAGE_NAME }} \
+            --set image.tag=develop-${{ github.sha }} \
+            --wait \
+            --timeout 5m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/java-security \
+            -n java-security \
+            --timeout=5m
+          kubectl get pods -n java-security
+          kubectl get svc -n java-security
+
+      - name: Run smoke tests
+        run: |
+          ENDPOINT=$(kubectl get svc java-security-service -n java-security -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f http://$ENDPOINT/ping || exit 1
+
+  deploy-prod:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://java-security.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name java-security-prod \
+            --region us-east-1
+
+      - name: Deploy with Helm
+        run: |
+          RELEASE_VERSION=${GITHUB_REF#refs/tags/v}
+
+          helm upgrade --install java-security ./helm \
+            --namespace java-security \
+            --create-namespace \
+            --values helm/values.yaml \
+            --set image.registry=${{ env.REGISTRY }} \
+            --set image.repository=${{ env.IMAGE_NAME }} \
+            --set image.tag=$RELEASE_VERSION \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/java-security \
+            -n java-security \
+            --timeout=10m
+          kubectl get pods -n java-security
+          kubectl get svc -n java-security
+
+      - name: Run health checks
+        run: |
+          ENDPOINT=$(kubectl get svc java-security-service -n java-security -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          for i in {1..10}; do
+            curl -f http://$ENDPOINT/ping && echo "Health check passed" && exit 0 || sleep 10
+          done
+          exit 1
+
+      - name: Create deployment record
+        uses: chrnorm/deployment-status@v2
+        if: success()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment-url: https://java-security.example.com
+          state: success
+          deployment-id: ${{ github.run_id }}

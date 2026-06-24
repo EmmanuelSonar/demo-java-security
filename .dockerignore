@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+.eclipse
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+target/
+node_modules/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+
+# Test
+coverage/
+.nyc_output/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# Kubernetes & IaC
+k8s/
+helm/
+scripts/
+docker-compose.yml
+
+# Misc
+credentials.properties
+*.log
+*.tmp

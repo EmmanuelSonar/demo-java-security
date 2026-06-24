@@ -1,0 +1,45 @@
+name: Kubernetes Manifest Lint
+
+on:
+  pull_request:
+    paths:
+      - 'k8s/**'
+      - '.github/workflows/k8s-lint.yml'
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Install kubeval
+        run: |
+          curl -L https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz
+          sudo mv kubeval /usr/local/bin
+
+      - name: Validate Kubernetes manifests with kubeval
+        run: |
+          for file in k8s/*.yaml; do
+            echo "Validating $file..."
+            kubeval "$file" || exit 1
+          done
+
+      - name: Check manifests with kubectl
+        run: |
+          for file in k8s/*.yaml; do
+            echo "Checking $file..."
+            kubectl apply -f "$file" --dry-run=client --validate=true || exit 1
+          done
+
+      - name: Validate with kustomize
+        run: |
+          kubectl kustomize k8s > /tmp/output.yaml
+          kubectl apply -f /tmp/output.yaml --dry-run=client
