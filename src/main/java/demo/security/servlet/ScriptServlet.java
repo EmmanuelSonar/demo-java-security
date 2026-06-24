@@ -18,7 +18,7 @@ public class ScriptServlet extends HttpServlet {
         try {
             Utils.executeJs(data);
         } catch (ScriptException e) {
-            throw new RuntimeException(e);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An error occurred while processing the script.");
         }
     }
 }
