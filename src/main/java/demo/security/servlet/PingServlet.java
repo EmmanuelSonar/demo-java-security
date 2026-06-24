@@ -10,8 +10,12 @@ import javax.servlet.http.HttpServletResponse;
 public class PingServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.setContentType("text/plain");
-        response.getWriter().print("pong");
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            response.setContentType("text/plain");
+            response.getWriter().print("pong");
+        } catch (IOException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
     }
 }
