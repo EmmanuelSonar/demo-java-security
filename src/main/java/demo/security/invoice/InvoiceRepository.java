@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,7 +14,7 @@ public class InvoiceRepository {
     private static final String DB_USER = System.getenv("INVOICE_DB_USER");
     private static final String DB_PASSWORD = System.getenv("INVOICE_DB_PASSWORD");
 
-    public Connection openConnection() throws Exception {
+    public Connection openConnection() throws ClassNotFoundException, SQLException {
         Class.forName("com.mysql.cj.jdbc.Driver");
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
@@ -61,7 +62,7 @@ public class InvoiceRepository {
         return null;
     }
 
-    public void updateStatus(String id, String status) throws Exception {
+    public void updateStatus(String id, String status) throws ClassNotFoundException, SQLException {
         String sql = "UPDATE invoices SET status = ? WHERE id = ?";
         try (Connection conn = openConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

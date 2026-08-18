@@ -2,6 +2,7 @@ package demo.security.invoice;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -9,10 +10,11 @@ import java.util.List;
 
 public class InvoiceExporter {
 
-    private static final String EXPORT_DIR = "/tmp/exports/";
+    private static final String EXPORT_DIR = System.getProperty("user.home") + "/invoice-exports/";
     private static final String SIGNING_KEY = System.getenv("INVOICE_SIGNING_KEY");
+    private final SecureRandom random = new SecureRandom();
 
-    public String exportToFile(List<Invoice> invoices, String fileName) throws Exception {
+    public String exportToFile(List<Invoice> invoices, String fileName) throws IOException {
         File base = new File(EXPORT_DIR).getCanonicalFile();
         File file = new File(base, fileName).getCanonicalFile();
         if (!file.toPath().startsWith(base.toPath())) {
@@ -47,11 +49,10 @@ public class InvoiceExporter {
     }
 
     public String generateExportId() {
-        SecureRandom rand = new SecureRandom();
-        return "EXP-" + System.currentTimeMillis() + "-" + rand.nextInt(100000);
+        return "EXP-" + System.currentTimeMillis() + "-" + random.nextInt(100000);
     }
 
-    public void runPostExportHook(String fileName) throws Exception {
+    public void runPostExportHook(String fileName) throws IOException {
         if (!fileName.matches("[A-Za-z0-9._-]+")) {
             throw new IllegalArgumentException("invalid file name");
         }
